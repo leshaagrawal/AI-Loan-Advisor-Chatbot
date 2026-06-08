@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LoanIQ — AI Loan Advisor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: #252a38;
+    --accent: #4ade80;
+    --accent2: #22d3ee;
+    --accent-dim: rgba(74,222,128,0.12);
+    --text: #e8eaf0;
+    --text-muted: #7a8299;
+    --text-dim: #4a5168;
+    --user-bubble: #1a2740;
+    --ai-bubble: #131720;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { display:flex; align-items:center; gap:10px; }
+  .logo-icon {
+    width:34px; height:34px; border-radius:9px;
+    background: linear-gradient(135deg, #4ade80, #22d3ee);
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+  }
+  .logo-text { font-family:'DM Serif Display', serif; font-size:20px; letter-spacing:-.3px; }
+  .logo-text span { color: var(--accent); }
+  .status-pill {
+    display:flex; align-items:center; gap:6px;
+    background: var(--accent-dim); border: 1px solid rgba(74,222,128,.25);
+    padding: 4px 12px; border-radius:20px; font-size:12px; color: var(--accent);
+    font-weight:500;
+  }
+  .status-dot { width:6px; height:6px; border-radius:50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Main layout ── */
+  .main { display:flex; flex:1; overflow:hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 280px; flex-shrink:0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction:column;
+    overflow: hidden;
+  }
+  .sidebar-title {
+    padding: 16px 18px 10px;
+    font-size:11px; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; color: var(--text-dim);
+  }
+  .profile-form { flex:1; overflow-y:auto; padding: 0 14px 14px; }
+  .profile-form::-webkit-scrollbar { width:4px; }
+  .profile-form::-webkit-scrollbar-thumb { background: var(--border); border-radius:4px; }
+
+  .field { margin-bottom:10px; }
+  .field label { display:block; font-size:11.5px; color: var(--text-muted); margin-bottom:4px; font-weight:500; }
+  .field input, .field select {
+    width:100%; padding:8px 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius:8px; color: var(--text); font-family:inherit; font-size:13px;
+    outline:none; transition: border .2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+
+  .apply-btn {
+    width:100%; padding: 10px;
+    background: linear-gradient(135deg, #4ade80, #22d3ee);
+    border:none; border-radius:9px;
+    color:#0d0f14; font-family:inherit; font-weight:600; font-size:14px;
+    cursor:pointer; margin-top:4px; transition: opacity .2s, transform .1s;
+  }
+  .apply-btn:hover { opacity:.9; }
+  .apply-btn:active { transform:scale(.98); }
+
+  .profile-summary {
+    margin: 14px 14px 0;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius:10px; padding:12px; font-size:12.5px;
+  }
+  .profile-summary .ps-title { font-weight:600; color: var(--accent); margin-bottom:8px; font-size:12px; }
+  .ps-row { display:flex; justify-content:space-between; padding:3px 0; color: var(--text-muted); }
+  .ps-row span:last-child { color: var(--text); font-weight:500; }
+
+  /* ── Chat area ── */
+  .chat-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  .messages {
+    flex:1; overflow-y:auto; padding: 20px 24px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .messages::-webkit-scrollbar { width:4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius:4px; }
+
+  .msg { display:flex; gap:10px; max-width:100%; animation: fadeUp .3s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width:32px; height:32px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+  }
+  .msg.ai .msg-avatar { background: linear-gradient(135deg, #4ade80, #22d3ee); }
+  .msg.user .msg-avatar { background: var(--user-bubble); font-size:13px; font-weight:600; color: var(--accent2); border:1px solid var(--border); }
+
+  .msg-bubble {
+    max-width: 78%; padding: 12px 16px; border-radius: 14px;
+    line-height: 1.65; font-size:14.5px;
+  }
+  .msg.ai .msg-bubble { background: var(--ai-bubble); border: 1px solid var(--border); border-top-left-radius:4px; }
+  .msg.user .msg-bubble { background: var(--user-bubble); border: 1px solid #243050; border-top-right-radius:4px; color: var(--text); }
+
+  .msg-bubble strong { color: var(--accent); font-weight:600; }
+  .msg-bubble .lbl { color: var(--accent2); font-weight:600; }
+  .msg-bubble ul { padding-left:18px; margin:6px 0; }
+  .msg-bubble li { margin:3px 0; }
+  .msg-bubble .disclaimer {
+    margin-top:10px; padding:8px 10px;
+    background: rgba(251,191,36,.06); border-left:3px solid var(--yellow);
+    border-radius:0 6px 6px 0; font-size:12.5px; color: #c9a84c;
+  }
+  .msg-bubble .product-card {
+    margin-top:10px; padding:10px 12px;
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius:10px;
+  }
+  .msg-bubble .product-card .pc-title { font-weight:600; color: var(--accent); margin-bottom:6px; }
+  .msg-bubble .pc-row { display:flex; justify-content:space-between; font-size:13px; padding:2px 0; }
+  .msg-bubble .pc-row .k { color: var(--text-muted); }
+  .msg-bubble .pc-row .v { color: var(--text); font-weight:500; }
+  .msg-bubble .badge {
+    display:inline-block; padding:2px 8px; border-radius:20px;
+    font-size:11px; font-weight:600; margin-left:6px;
+  }
+  .badge.best { background: rgba(74,222,128,.15); color: var(--accent); border:1px solid rgba(74,222,128,.3); }
+  .badge.alt { background: rgba(34,211,238,.12); color: var(--accent2); border:1px solid rgba(34,211,238,.25); }
+
+  .typing-indicator { display:flex; align-items:center; gap:5px; padding:12px 16px; }
+  .typing-indicator span {
+    width:7px; height:7px; border-radius:50%; background: var(--text-dim);
+    animation: bounce .9s infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay:.18s; }
+  .typing-indicator span:nth-child(3) { animation-delay:.36s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* ── Quick suggestions ── */
+  .suggestions { display:flex; gap:8px; flex-wrap:wrap; padding:0 24px 10px; }
+  .chip {
+    padding: 6px 14px; border-radius:20px;
+    background: var(--surface2); border:1px solid var(--border);
+    font-size:12.5px; color: var(--text-muted); cursor:pointer;
+    transition: all .2s; white-space:nowrap;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* ── Input bar ── */
+  .input-bar {
+    display:flex; align-items:center; gap:10px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  #chatInput {
+    flex:1; padding:11px 16px;
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius:10px; color: var(--text); font-family:inherit; font-size:14px;
+    outline:none; transition: border .2s; resize:none; height:44px;
+  }
+  #chatInput:focus { border-color: var(--accent); }
+  #chatInput::placeholder { color: var(--text-dim); }
+  .send-btn {
+    width:44px; height:44px; border-radius:10px;
+    background: linear-gradient(135deg, #4ade80, #22d3ee);
+    border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition: opacity .2s, transform .1s; flex-shrink:0;
+  }
+  .send-btn:hover { opacity:.85; }
+  .send-btn:active { transform:scale(.93); }
+  .send-btn svg { width:18px; height:18px; fill: #0d0f14; }
+
+  /* ── EMI panel ── */
+  .emi-panel {
+    width:240px; flex-shrink:0;
+    background: var(--surface); border-left:1px solid var(--border);
+    padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;
+  }
+  .emi-panel::-webkit-scrollbar { width:4px; }
+  .emi-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius:4px; }
+  .ep-title {
+    font-size:11px; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; color: var(--text-dim); margin-bottom:2px;
+  }
+  .emi-card {
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius:10px; padding:12px;
+  }
+  .emi-card .ec-label { font-size:11.5px; color: var(--text-muted); margin-bottom:4px; }
+  .emi-card .ec-value { font-size:22px; font-family:'DM Serif Display',serif; color: var(--accent); }
+  .emi-card .ec-sub { font-size:11.5px; color: var(--text-dim); margin-top:2px; }
+  .ep-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:13px; }
+  .ep-row .ep-k { color: var(--text-muted); }
+  .ep-row .ep-v { color: var(--text); font-weight:500; }
+  .ep-divider { height:1px; background: var(--border); }
+
+  .progress-bar { margin-top:6px; }
+  .pb-label { display:flex; justify-content:space-between; font-size:11.5px; color: var(--text-dim); margin-bottom:4px; }
+  .pb-track { height:6px; background: var(--border); border-radius:3px; overflow:hidden; }
+  .pb-fill { height:100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius:3px; transition: width .5s ease; }
+
+  /* empty state */
+  .empty-state {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:12px; color: var(--text-dim); text-align:center; padding:30px;
+  }
+  .empty-state .es-icon { font-size:42px; margin-bottom:4px; }
+  .empty-state h2 { font-family:'DM Serif Display',serif; font-size:22px; color: var(--text-muted); }
+  .empty-state p { font-size:13.5px; max-width:300px; line-height:1.6; }
+
+  /* ── Voice button ── */
+  .voice-btn {
+    width:44px; height:44px; border-radius:10px;
+    background: var(--surface2); border:1px solid var(--border);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition: all .2s; flex-shrink:0; font-size:18px;
+  }
+  .voice-btn:hover { border-color: var(--accent2); background: rgba(34,211,238,.1); }
+  .voice-btn.recording {
+    border-color: var(--red); background: rgba(248,113,113,.15);
+    animation: recordPulse 1s infinite;
+  }
+  @keyframes recordPulse { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)} 50%{box-shadow:0 0 0 6px rgba(248,113,113,0)} }
+
+  /* ── Language toggle ── */
+  .lang-toggle {
+    display:flex; align-items:center; gap:6px;
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius:20px; padding:3px; margin-left:4px;
+  }
+  .lang-btn {
+    padding:3px 10px; border-radius:16px; font-size:11.5px; font-weight:600;
+    cursor:pointer; border:none; background:transparent; color: var(--text-muted);
+    transition: all .2s; font-family:inherit;
+  }
+  .lang-btn.active { background: var(--accent-dim); color: var(--accent); border:1px solid rgba(74,222,128,.3); }
+
+  /* ── Download button in chat ── */
+  .dl-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    margin-top:10px; padding:7px 14px; border-radius:8px;
+    background: var(--accent-dim); border:1px solid rgba(74,222,128,.3);
+    color: var(--accent); font-size:12.5px; font-weight:600;
+    cursor:pointer; transition: all .2s; font-family:inherit;
+  }
+  .dl-btn:hover { background: rgba(74,222,128,.2); }
+
+  /* ── PDF Modal overlay ── */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:100;
+    display:flex; align-items:center; justify-content:center;
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal {
+    background: var(--surface); border:1px solid var(--border);
+    border-radius:16px; width:580px; max-width:95vw; max-height:90vh;
+    display:flex; flex-direction:column; overflow:hidden;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; border-bottom:1px solid var(--border);
+  }
+  .modal-title { font-family:'DM Serif Display',serif; font-size:18px; }
+  .modal-close {
+    width:30px; height:30px; border-radius:8px;
+    background:var(--surface2); border:1px solid var(--border);
+    cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;
+    color: var(--text-muted); transition: all .2s;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
+  .modal-body { flex:1; overflow-y:auto; padding:20px; }
+  .modal-body::-webkit-scrollbar { width:4px; }
+  .modal-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+  .modal-footer {
+    padding:14px 20px; border-top:1px solid var(--border);
+    display:flex; gap:10px; justify-content:flex-end;
+  }
+  .modal-footer button {
+    padding:9px 20px; border-radius:9px; font-family:inherit; font-size:13.5px;
+    font-weight:600; cursor:pointer; transition: all .2s;
+  }
+  .btn-secondary { background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); }
+  .btn-secondary:hover { border-color:var(--text-muted); color:var(--text); }
+  .btn-primary {
+    background:linear-gradient(135deg,#4ade80,#22d3ee);
+    border:none; color:#0d0f14;
+  }
+  .btn-primary:hover { opacity:.88; }
+
+  /* ── Report preview (inside modal) ── */
+  .report-preview {
+    background:#fff; color:#1a1a2e; border-radius:10px;
+    padding:28px 32px; font-family:'DM Sans',sans-serif; font-size:13.5px;
+    line-height:1.7;
+  }
+  .rp-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+  .rp-logo { font-family:'DM Serif Display',serif; font-size:22px; color:#0d9488; }
+  .rp-logo span { color:#06b6d4; }
+  .rp-date { font-size:11px; color:#6b7280; text-align:right; }
+  .rp-title { font-family:'DM Serif Display',serif; font-size:17px; color:#111827; margin-bottom:4px; }
+  .rp-divider { height:2px; background:linear-gradient(90deg,#4ade80,#22d3ee); border-radius:2px; margin:12px 0; }
+  .rp-section { margin-bottom:16px; }
+  .rp-section-title { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#6b7280; margin-bottom:8px; }
+  .rp-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; }
+  .rp-kv { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f3f4f6; font-size:13px; }
+  .rp-kv .rk { color:#6b7280; }
+  .rp-kv .rv { font-weight:600; color:#111827; }
+  .rp-highlight {
+    background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;
+    padding:12px 14px; margin:10px 0;
+  }
+  .rp-highlight .rh-title { font-weight:700; color:#15803d; font-size:13px; margin-bottom:6px; }
+  .rp-highlight .rh-emi { font-family:'DM Serif Display',serif; font-size:26px; color:#15803d; }
+  .rp-highlight .rh-sub { font-size:11.5px; color:#6b7280; margin-top:2px; }
+  .rp-warning {
+    background:#fffbeb; border-left:3px solid #f59e0b;
+    border-radius:0 6px 6px 0; padding:8px 12px; font-size:12px; color:#92400e; margin-top:12px;
+  }
+  .rp-footer { margin-top:20px; padding-top:12px; border-top:1px solid #e5e7eb; font-size:11px; color:#9ca3af; }
+
+  @media (max-width:900px) {
+    .emi-panel { display:none; }
+    .sidebar { width:220px; }
+  }
+  @media (max-width:640px) {
+    .sidebar { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💡</div>
+    <div class="logo-text">Loan<span>IQ</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btnEN" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btnHI" onclick="setLang('hi')">हि</button>
+    </div>
+    <div class="status-pill"><div class="status-dot"></div><span id="statusText">AI Advisor Online</span></div>
+  </div>
+</header>
+
+<!-- PDF Summary Modal -->
+<div class="modal-overlay" id="pdfModal" style="display:none" onclick="if(event.target===this)closePdfModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📄 Loan Recommendation Summary</div>
+      <button class="modal-close" onclick="closePdfModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="report-preview" id="reportPreview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closePdfModal()">Close</button>
+      <button class="btn-primary" onclick="downloadPDF()">⬇ Download PDF</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Login Screen -->
+<div id="loginScreen" style="
+position:fixed;
+inset:0;
+background:#0d0f14;
+display:flex;
+align-items:center;
+justify-content:center;
+z-index:9999;
+">
+  <div style="
+    width:340px;
+    background:#151820;
+    border:1px solid #252a38;
+    border-radius:16px;
+    padding:28px;
+  ">
+    <h2 style="margin-bottom:20px;color:#4ade80">
+      LoanIQ Login
+    </h2>
+
+    <input
+      id="loginEmail"
+      placeholder="Email"
+      style="
+        width:100%;
+        margin-bottom:12px;
+        padding:12px;
+        border-radius:10px;
+        border:1px solid #252a38;
+        background:#1c2030;
+        color:white;
+      "
+    />
+
+    <input
+      id="loginPassword"
+      type="password"
+      placeholder="Password"
+      style="
+        width:100%;
+        margin-bottom:16px;
+        padding:12px;
+        border-radius:10px;
+        border:1px solid #252a38;
+        background:#1c2030;
+        color:white;
+      "
+    />
+
+    <button
+      onclick="login()"
+      style="
+        width:100%;
+        padding:12px;
+        border:none;
+        border-radius:10px;
+        background:linear-gradient(135deg,#4ade80,#22d3ee);
+        font-weight:600;
+        cursor:pointer;
+      "
+    >
+      Login
+    </button>
+
+    <div style="
+      margin-top:14px;
+      font-size:12px;
+      color:#7a8299;
+    ">
+      Demo: demo@loaniq.ai / demo123
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Sidebar: Borrower Profile -->
+  <div class="sidebar">
+    <div class="sidebar-title">Borrower Profile</div>
+    <div class="profile-form">
+      <div class="field">
+        <label>Loan Amount (₹)</label>
+        <input type="number" id="loanAmount" value="500000" min="10000" max="10000000"/>
+      </div>
+      <div class="field">
+        <label>Loan Purpose</label>
+        <select id="loanPurpose">
+          <option>Personal / Emergency</option>
+          <option>Home Renovation</option>
+          <option>Business / SME</option>
+          <option>Education</option>
+          <option>Vehicle</option>
+          <option>Medical</option>
+          <option>Buy Now Pay Later</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Monthly Income (₹)</label>
+        <input type="number" id="income" value="75000" min="5000"/>
+      </div>
+      <div class="field">
+        <label>Existing EMIs / Month (₹)</label>
+        <input type="number" id="existingEmi" value="8000" min="0"/>
+      </div>
+      <div class="field">
+        <label>Employment Type</label>
+        <select id="employment">
+          <option>Salaried</option>
+          <option>Self-Employed</option>
+          <option>Business Owner</option>
+          <option>Freelancer</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Preferred Tenure (months)</label>
+        <input type="number" id="tenure" value="24" min="3" max="84"/>
+      </div>
+      <div class="field">
+        <label>Credit Score (approx)</label>
+        <input type="number" id="creditScore" value="720" min="300" max="900"/>
+      </div>
+      <button class="apply-btn" onclick="applyProfile()">🔍 Get AI Recommendations</button>
+    </div>
+
+    <div class="profile-summary" id="profileSummary" style="display:none">
+      <div class="ps-title">Active Profile</div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="empty-state" id="emptyState">
+        <div class="es-icon">🏦</div>
+        <h2>Your AI Loan Advisor</h2>
+        <p>Fill in your borrower profile and click <strong>Get AI Recommendations</strong>, or type a question below to get started.</p>
+      </div>
+    </div>
+
+    <div class="suggestions" id="suggestions">
+      <div class="chip" onclick="sendChip(this)">What loan suits me?</div>
+      <div class="chip" onclick="sendChip(this)">Explain EMI calculation</div>
+      <div class="chip" onclick="sendChip(this)">Compare 12 vs 24 months</div>
+      <div class="chip" onclick="sendChip(this)">What is FOIR?</div>
+      <div class="chip" onclick="sendChip(this)">How is eligibility decided?</div>
+      <div class="chip" onclick="openPdfModal()" style="border-color:rgba(74,222,128,.3);color:var(--accent)">📄 Download Summary</div>
+    </div>
+
+    <div class="input-bar">
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice input">🎤</button>
+      <input type="text" id="chatInput" placeholder="Ask anything about loans, EMIs, eligibility…" onkeydown="if(event.key==='Enter')sendMessage()"/>
+      <button class="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- EMI Panel -->
+  <div class="emi-panel" id="emiPanel">
+    <div class="ep-title">Loan Calculator</div>
+
+    <div class="emi-card">
+      <div class="ec-label">Monthly EMI</div>
+      <div class="ec-value" id="epEmi">—</div>
+      <div class="ec-sub" id="epEmiSub">Set profile to calculate</div>
+    </div>
+
+    <div class="ep-divider"></div>
+
+    <div class="ep-row"><span class="ep-k">Loan Amount</span><span class="ep-v" id="epPrincipal">—</span></div>
+    <div class="ep-row"><span class="ep-k">Rate (p.a.)</span><span class="ep-v" id="epRate">—</span></div>
+    <div class="ep-row"><span class="ep-k">Tenure</span><span class="ep-v" id="epTenure">—</span></div>
+    <div class="ep-row"><span class="ep-k">Total Interest</span><span class="ep-v" id="epInterest">—</span></div>
+    <div class="ep-row"><span class="ep-k">Total Repayment</span><span class="ep-v" id="epTotal">—</span></div>
+
+    <div class="ep-divider"></div>
+
+    <div class="ep-title" style="margin-top:4px">Interest Breakdown</div>
+    <div class="progress-bar">
+      <div class="pb-label"><span>Principal</span><span id="pbPct">—</span></div>
+      <div class="pb-track"><div class="pb-fill" id="pbFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="ep-divider"></div>
+    <div class="ep-title" style="margin-top:4px">Eligibility Signals</div>
+    <div id="eligibilitySignals" style="font-size:12.5px; color: var(--text-muted); line-height:1.7">Fill profile to see signals.</div>
+  </div>
+
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────
+const API_URL  = "https://llm-wrapper-741152993481.asia-south1.run.app/llm/query";
+const API_TOKEN = "lw_zgckVQBmnc1DWIzP87xDeIoz0bTkdYE0iIFzoi4ts44"; // Replace with real token
+
+// ── Product Catalog ──────────────────────────────────────
+const PRODUCTS = [
+  {
+    id:"personal_loan", name:"Personal Loan",
+    minAmount:50000, maxAmount:5000000,
+    minRate:10.5, maxRate:18,
+    minTenure:6, maxTenure:60,
+    purposes:["Personal / Emergency","Home Renovation","Medical","Education"],
+    employment:["Salaried","Self-Employed"],
+    minCreditScore:650, minIncome:20000,
+    foirLimit:0.55,
+    description:"Unsecured personal loan with competitive rates. Best for salaried individuals with stable income."
+  },
+  {
+    id:"salary_advance", name:"Salary Advance Loan",
+    minAmount:10000, maxAmount:300000,
+    minRate:14, maxRate:24,
+    minTenure:1, maxTenure:12,
+    purposes:["Personal / Emergency","Medical"],
+    employment:["Salaried"],
+    minCreditScore:600, minIncome:15000,
+    foirLimit:0.65,
+    description:"Short-term salary advance for salaried employees. Quick disbursal within 24 hours."
+  },
+  {
+    id:"bnpl", name:"Buy Now Pay Later (BNPL)",
+    minAmount:2000, maxAmount:100000,
+    minRate:0, maxRate:3,
+    minTenure:1, maxTenure:6,
+    purposes:["Buy Now Pay Later"],
+    employment:["Salaried","Self-Employed","Freelancer"],
+    minCreditScore:580, minIncome:10000,
+    foirLimit:0.70,
+    description:"Zero or low interest for short EMI cycles. Ideal for consumer purchases."
+  },
+  {
+    id:"sme_loan", name:"SME Business Loan",
+    minAmount:200000, maxAmount:10000000,
+    minRate:12, maxRate:20,
+    minTenure:12, maxTenure:84,
+    purposes:["Business / SME"],
+    employment:["Self-Employed","Business Owner"],
+    minCreditScore:650, minIncome:50000,
+    foirLimit:0.60,
+    description:"Flexible business loan for SMEs and entrepreneurs. Collateral optional above ₹20L."
+  },
+  {
+    id:"top_up", name:"Top-Up Loan",
+    minAmount:100000, maxAmount:2000000,
+    minRate:9, maxRate:14,
+    minTenure:12, maxTenure:60,
+    purposes:["Personal / Emergency","Home Renovation","Education"],
+    employment:["Salaried","Self-Employed","Business Owner"],
+    minCreditScore:680, minIncome:30000,
+    foirLimit:0.50,
+    description:"Top-up on existing home or personal loan. Low rates for existing customers."
+  },
+  {
+    id:"secured_loan", name:"Secured Loan (LAP)",
+    minAmount:500000, maxAmount:50000000,
+    minRate:8.5, maxRate:13,
+    minTenure:12, maxTenure:180,
+    purposes:["Business / SME","Home Renovation","Education"],
+    employment:["Salaried","Self-Employed","Business Owner"],
+    minCreditScore:620, minIncome:30000,
+    foirLimit:0.65,
+    description:"Loan Against Property. Lowest rates, high amounts. Property must be clear-title."
+  }
+];
+
+// ── Mock Users / Auth ───────────────────────────────────
+const USERS = [
+  {
+    id: "u1",
+    email: "demo@loaniq.ai",
+    password: "demo123",
+    name: "Demo User"
+  },
+  {
+    id: "u2",
+    email: "test@loaniq.ai",
+    password: "test123",
+    name: "Test User"
+  }
+];
+
+// ── State ────────────────────────────────────────────────
+let currentUser = null;
+let authToken = null;
+
+let chatHistory = [];
+let profile = null;
+let activeProduct = null;
+
+
+// ── Authentication Helpers ───────────────────────────────
+function generateToken() {
+  return 'tok_' + Math.random().toString(36).substring(2) + Date.now();
+}
+
+function login() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+
+  const user = USERS.find(
+    u => u.email === email && u.password === password
+  );
+
+  if (!user) {
+    alert("Invalid credentials");
+    return;
+  }
+
+  currentUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email
+  };
+
+  authToken = generateToken();
+
+  sessionStorage.setItem(
+    'loaniq_auth',
+    JSON.stringify({
+      user: currentUser,
+      token: authToken
+    })
+  );
+
+  document.getElementById('loginScreen').style.display = 'none';
+
+  loadUserSession();
+
+  addMsg(
+    'ai',
+    `Welcome back <strong>${currentUser.name}</strong> 👋`
+  );
+}
+
+function getUserStorageKey(key) {
+  return `${currentUser.id}_${key}`;
+}
+
+function saveUserSession() {
+  sessionStorage.setItem(
+    getUserStorageKey('chat'),
+    JSON.stringify(chatHistory)
+  );
+
+  sessionStorage.setItem(
+    getUserStorageKey('profile'),
+    JSON.stringify(profile)
+  );
+}
+
+function loadUserSession() {
+  const savedChat = sessionStorage.getItem(
+    getUserStorageKey('chat')
+  );
+
+  const savedProfile = sessionStorage.getItem(
+    getUserStorageKey('profile')
+  );
+
+  if (savedChat) {
+    chatHistory = JSON.parse(savedChat);
+  }
+
+  if (savedProfile) {
+    profile = JSON.parse(savedProfile);
+    updateProfileSummary(profile);
+  }
+}
+
+// ── EMI Calculator ───────────────────────────────────────
+function calcEMI(P, rAnnual, months) {
+  if (rAnnual === 0) return P / months;
+  const r = rAnnual / 12 / 100;
+  return P * r * Math.pow(1+r, months) / (Math.pow(1+r, months) - 1);
+}
+
+// ── Eligibility Engine ───────────────────────────────────
+function checkEligibility(product, prof) {
+  const foir = (prof.existingEmi + calcEMI(prof.amount, product.minRate, prof.tenure)) / prof.income;
+  const reasons = [];
+  if (prof.amount < product.minAmount || prof.amount > product.maxAmount)
+    reasons.push(`Amount outside range ₹${fmt(product.minAmount)}–₹${fmt(product.maxAmount)}`);
+  if (!product.purposes.includes(prof.purpose))
+    reasons.push(`Purpose not matched (${product.purposes.join(', ')})`);
+  if (!product.employment.includes(prof.employment))
+    reasons.push(`Employment type not eligible`);
+  if (prof.creditScore < product.minCreditScore)
+    reasons.push(`Credit score too low (need ≥ ${product.minCreditScore})`);
+  if (prof.income < product.minIncome)
+    reasons.push(`Income below minimum ₹${fmt(product.minIncome)}`);
+  if (foir > product.foirLimit)
+    reasons.push(`FOIR ${(foir*100).toFixed(0)}% exceeds limit ${(product.foirLimit*100).toFixed(0)}%`);
+  const tenureOk = prof.tenure >= product.minTenure && prof.tenure <= product.maxTenure;
+  if (!tenureOk) reasons.push(`Tenure must be ${product.minTenure}–${product.maxTenure} months`);
+  return { eligible: reasons.length === 0, reasons };
+}
+
+function getRecommendations(prof) {
+  return PRODUCTS
+    .map(p => {
+      const { eligible, reasons } = checkEligibility(p, prof);
+      const rate = eligible ? p.minRate : null;
+      const emi = rate ? calcEMI(prof.amount, rate, prof.tenure) : null;
+      return { ...p, eligible, reasons, rate, emi };
+    })
+    .sort((a,b) => (b.eligible - a.eligible) || (a.minRate - b.minRate));
+}
+
+// ── Formatting ───────────────────────────────────────────
+function fmt(n) {
+  return n === null || n === undefined ? '—' :
+    '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0});
+}
+
+// ── UI Helpers ───────────────────────────────────────────
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  setTimeout(()=>{ m.scrollTop = m.scrollHeight; }, 50);
+}
+
+function removeEmpty() {
+  const e = document.getElementById('emptyState');
+  if (e) e.remove();
+}
+
+function addMsg(role, html) {
+  removeEmpty();
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'ai' ? '💡' : 'U';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = html;
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  document.getElementById('messages').appendChild(wrap);
+  scrollBottom();
+  return bubble;
+}
+
+function showTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ai'; wrap.id = 'typing';
+  wrap.innerHTML = `<div class="msg-avatar">💡</div><div class="msg-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('messages').appendChild(wrap);
+  scrollBottom();
+}
+function hideTyping() { const t = document.getElementById('typing'); if(t) t.remove(); }
+
+// ── EMI Panel update ─────────────────────────────────────
+function updateEmiPanel(prof, rate) {
+  if (!prof) return;
+  const emi = calcEMI(prof.amount, rate, prof.tenure);
+  const total = emi * prof.tenure;
+  const interest = total - prof.amount;
+  const principalPct = Math.round(prof.amount / total * 100);
+  document.getElementById('epEmi').textContent = fmt(Math.round(emi));
+  document.getElementById('epEmiSub').textContent = `for ${prof.tenure} months @ ${rate}% p.a.`;
+  document.getElementById('epPrincipal').textContent = fmt(prof.amount);
+  document.getElementById('epRate').textContent = rate + '% p.a.';
+  document.getElementById('epTenure').textContent = prof.tenure + ' months';
+  document.getElementById('epInterest').textContent = fmt(Math.round(interest));
+  document.getElementById('epTotal').textContent = fmt(Math.round(total));
+  document.getElementById('pbFill').style.width = principalPct + '%';
+  document.getElementById('pbPct').textContent = principalPct + '% principal';
+
+  const foir = ((prof.existingEmi + emi) / prof.income * 100).toFixed(1);
+  const elig = [];
+  elig.push(`FOIR: <strong>${foir}%</strong> ${foir<=55?'✅ Healthy':'⚠️ High'}`);
+  elig.push(`Credit Score: <strong>${prof.creditScore}</strong> ${prof.creditScore>=700?'✅ Good':prof.creditScore>=650?'⚠️ Fair':'❌ Low'}`);
+  const obli = (prof.existingEmi/prof.income*100).toFixed(1);
+  elig.push(`Existing obligations: <strong>${obli}%</strong> of income`);
+  document.getElementById('eligibilitySignals').innerHTML = elig.join('<br/>');
+}
+
+// ── Profile Summary ──────────────────────────────────────
+function updateProfileSummary(prof) {
+  const el = document.getElementById('profileSummary');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="ps-title">Active Profile</div>
+    <div class="ps-row"><span>Amount</span><span>${fmt(prof.amount)}</span></div>
+    <div class="ps-row"><span>Income</span><span>${fmt(prof.income)}/mo</span></div>
+    <div class="ps-row"><span>Tenure</span><span>${prof.tenure} months</span></div>
+    <div class="ps-row"><span>Credit</span><span>${prof.creditScore}</span></div>
+    <div class="ps-row"><span>Employment</span><span>${prof.employment}</span></div>
+  `;
+}
+
+// ── Apply profile & get recommendations ─────────────────
+async function applyProfile() {
+  profile = {
+    amount: parseFloat(document.getElementById('loanAmount').value)||500000,
+    purpose: document.getElementById('loanPurpose').value,
+    income: parseFloat(document.getElementById('income').value)||50000,
+    existingEmi: parseFloat(document.getElementById('existingEmi').value)||0,
+    employment: document.getElementById('employment').value,
+    tenure: parseInt(document.getElementById('tenure').value)||24,
+    creditScore: parseInt(document.getElementById('creditScore').value)||700,
+  };
+
+  updateProfileSummary(profile);
+  const recs = getRecommendations(profile);
+  const eligible = recs.filter(r=>r.eligible);
+  const best = eligible[0];
+  if (best) updateEmiPanel(profile, best.minRate);
+
+  // Build a context summary for the AI
+  const recSummary = recs.slice(0,4).map(r=>
+    `- ${r.name}: ${r.eligible?'✅ Eligible':'❌ Not eligible'}${r.eligible?` | Rate: ${r.minRate}–${r.maxRate}% | EMI: ~₹${Math.round(r.emi).toLocaleString('en-IN')}`:''}${!r.eligible?' | Reasons: '+r.reasons.join('; '):''}`
+  ).join('\n');
+
+  const userMsg = `My borrower profile:
+- Loan required: ₹${profile.amount.toLocaleString('en-IN')} for ${profile.tenure} months
+- Purpose: ${profile.purpose}
+- Monthly income: ₹${profile.income.toLocaleString('en-IN')}
+- Existing EMIs: ₹${profile.existingEmi.toLocaleString('en-IN')}
+- Employment: ${profile.employment}
+- Credit score: ~${profile.creditScore}
+
+Eligibility engine results:
+${recSummary}
+
+Please give me a clear, concise loan recommendation with the best option, EMI breakdown, and any risk flags.`;
+
+  addMsg('user', `🔍 <strong>Profile submitted.</strong> Requesting AI recommendations…`);
+  chatHistory.push({ role:'user', content: userMsg });
+  saveUserSession();
+  await callAI();
+}
+
+// ── Send message ─────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  addMsg('user', escHtml(text));
+
+  // Augment with profile context if available
+  let content = text;
+  if (profile) {
+    content = `[User profile: Amount ₹${profile.amount}, Income ₹${profile.income}/mo, Employment: ${profile.employment}, Credit: ${profile.creditScore}, Tenure: ${profile.tenure}mo, Purpose: ${profile.purpose}]\n\nUser question: ${text}`;
+  }
+  chatHistory.push({ role:'user', content });
+  saveUserSession();
+  await callAI();
+}
+
+function sendChip(el) {
+  document.getElementById('chatInput').value = el.textContent;
+  sendMessage();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Call AI ──────────────────────────────────────────────
+async function callAI() {
+  showTyping();
+
+  const systemPrompt = `You are LoanIQ, a responsible AI loan advisor for an Indian fintech lender.
+${LANG[currentLang].langInstruction}
+
+PRODUCT CATALOG (mock):
+${PRODUCTS.map(p=>`• ${p.name}: ₹${p.minAmount.toLocaleString()}–₹${p.maxAmount.toLocaleString()}, ${p.minRate}–${p.maxRate}% p.a., ${p.minTenure}–${p.maxTenure} months. ${p.description}`).join('\n')}
+
+EMI FORMULA: EMI = P × r(1+r)^n / ((1+r)^n − 1) where r = monthly rate, n = months
+
+GUIDELINES:
+1. Be concise, clear, and structured. Use bullet points and bold key figures.
+2. Always mention: recommended product, estimated EMI, total repayment, and total interest.
+3. Explain trade-offs between short and long tenures.
+4. Flag FOIR risk if existing EMI + new EMI > 55% of income.
+5. NEVER guarantee loan approval. Always include: "⚠️ Final approval subject to underwriting and document verification."
+6. Do not invent rates or products not in the catalog above.
+7. If asked about eligibility, use the provided credit score, income, and FOIR.
+8. Keep responses under 300 words unless doing a detailed comparison.
+9. Respond in plain language suitable for a borrower, not a banker.`;
+
+  // Build messages array for the wrapper (single user turn with history context)
+  const historyStr = chatHistory.slice(-6).map(m=>`${m.role==='user'?'User':'Advisor'}: ${m.content}`).join('\n\n');
+  const finalPrompt = `${systemPrompt}\n\n---\nCONVERSATION:\n${historyStr}`;
+
+  try {
+    const resp = await fetch(API_URL, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${API_TOKEN}`,
+        'X-User-Id': currentUser?.id || '',
+        'X-Session-Token': authToken || ''
+      },
+      body: JSON.stringify({ prompt: finalPrompt })
+    });
+    const data = await resp.json();
+    let text = '';
+    if (data.content && Array.isArray(data.content)) {
+      text = data.content.map(b=>b.text||'').join('');
+    } else if (data.response) {
+      text = data.response;
+    } else if (typeof data === 'string') {
+      text = data;
+    } else {
+      text = JSON.stringify(data);
+    }
+    hideTyping();
+    chatHistory.push({ role:'assistant', content: text });
+    saveUserSession();
+    addMsg('ai', formatAiText(text));
+  } catch(e) {
+    hideTyping();
+    addMsg('ai', `<span style="color:var(--red)">⚠️ Unable to reach the AI advisor. Please check your API token and try again.</span><br/><small style="color:var(--text-dim)">${e.message}</small>`);
+  }
+}
+
+// ── Format AI response text → HTML ───────────────────────
+function formatAiText(text) {
+  // Convert markdown-ish to HTML
+  let h = text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:13px">$1</code>')
+    .replace(/^### (.+)$/gm, '<div class="lbl" style="margin:8px 0 4px">$1</div>')
+    .replace(/^## (.+)$/gm, '<div class="lbl" style="margin:8px 0 4px;font-size:15px">$1</div>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+
+  // Wrap disclaimers
+  h = h.replace(/(⚠️[^\n<]+)/g, '<div class="disclaimer">$1</div>');
+
+  // Paragraphs
+  h = h.split(/\n\n+/).map(p => {
+    if (p.startsWith('<ul>') || p.startsWith('<div')) return p;
+    return `<p style="margin:4px 0">${p.replace(/\n/g,'<br/>')}</p>`;
+  }).join('');
+
+  return h;
+}
+
+// ── Language / i18n ──────────────────────────────────────
+const LANG = {
+  en: {
+    placeholder: "Ask anything about loans, EMIs, eligibility…",
+    statusText: "AI Advisor Online",
+    applyBtn: "🔍 Get AI Recommendations",
+    langInstruction: "Respond in English.",
+    welcomeNote: ""
+  },
+  hi: {
+    placeholder: "ऋण, EMI, पात्रता के बारे में पूछें…",
+    statusText: "AI सलाहकार ऑनलाइन",
+    applyBtn: "🔍 AI सिफारिशें प्राप्त करें",
+    langInstruction: "हिंदी में उत्तर दें। सरल और स्पष्ट भाषा का उपयोग करें।",
+    welcomeNote: "नमस्ते! आप हिंदी में प्रश्न पूछ सकते हैं।"
+  }
+};
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('btnEN').classList.toggle('active', lang==='en');
+  document.getElementById('btnHI').classList.toggle('active', lang==='hi');
+  document.getElementById('chatInput').placeholder = LANG[lang].placeholder;
+  document.getElementById('statusText').textContent = LANG[lang].statusText;
+  document.querySelector('.apply-btn').textContent = LANG[lang].applyBtn;
+  if (lang === 'hi' && LANG.hi.welcomeNote) {
+    addMsg('ai', `🙏 <strong>भाषा बदली: हिंदी</strong><br/>${LANG.hi.welcomeNote}`);
+  }
+}
+
+// ── Voice Input ──────────────────────────────────────────
+let recognition = null;
+let isRecording = false;
+
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    addMsg('ai', '⚠️ Voice input is not supported in this browser. Please use Chrome.');
+    return;
+  }
+  if (isRecording) {
+    recognition.stop();
+    return;
+  }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = currentLang === 'hi' ? 'hi-IN' : 'en-IN';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('voiceBtn').classList.add('recording');
+    document.getElementById('voiceBtn').textContent = '⏹';
+    document.getElementById('chatInput').placeholder = currentLang === 'hi' ? 'सुन रहा हूँ…' : 'Listening…';
+  };
+  recognition.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r=>r[0].transcript).join('');
+    document.getElementById('chatInput').value = transcript;
+  };
+  recognition.onend = () => {
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+    document.getElementById('voiceBtn').textContent = '🎤';
+    document.getElementById('chatInput').placeholder = LANG[currentLang].placeholder;
+    const val = document.getElementById('chatInput').value.trim();
+    if (val) sendMessage();
+  };
+  recognition.onerror = (e) => {
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+    document.getElementById('voiceBtn').textContent = '🎤';
+    document.getElementById('chatInput').placeholder = LANG[currentLang].placeholder;
+    if (e.error !== 'no-speech') addMsg('ai', `⚠️ Voice error: ${e.error}`);
+  };
+  recognition.start();
+}
+
+// ── PDF / Download Summary ───────────────────────────────
+function buildReportHTML() {
+  if (!profile) {
+    return `<p style="color:#6b7280;text-align:center;padding:20px">Please submit a borrower profile first to generate a summary.</p>`;
+  }
+  const recs = getRecommendations(profile);
+  const eligible = recs.filter(r=>r.eligible);
+  const best = eligible[0];
+  const now = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+
+  let productsHTML = '';
+  eligible.slice(0,3).forEach((p, i) => {
+    const emi = Math.round(p.emi);
+    const total = Math.round(emi * profile.tenure);
+    const interest = total - profile.amount;
+    productsHTML += `
+      <div style="margin-bottom:12px;padding:10px 12px;background:${i===0?'#f0fdf4':'#f9fafb'};border:1px solid ${i===0?'#bbf7d0':'#e5e7eb'};border-radius:8px">
+        <div style="font-weight:700;color:${i===0?'#15803d':'#374151'};font-size:13px;margin-bottom:6px">
+          ${i===0?'⭐ ':''}${p.name}${i===0?' <span style="font-size:11px;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:10px;font-weight:600">Best Match</span>':''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px">
+          <div><span style="color:#6b7280">Rate:</span> <strong>${p.minRate}% p.a.</strong></div>
+          <div><span style="color:#6b7280">EMI:</span> <strong>₹${emi.toLocaleString('en-IN')}/mo</strong></div>
+          <div><span style="color:#6b7280">Total Interest:</span> <strong>₹${interest.toLocaleString('en-IN')}</strong></div>
+        </div>
+      </div>`;
+  });
+
+  const foir = best ? ((profile.existingEmi + best.emi) / profile.income * 100).toFixed(1) : 'N/A';
+
+  return `
+    <div class="rp-header">
+      <div>
+        <div class="rp-logo">Loan<span>IQ</span></div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">AI-Powered Loan Advisor</div>
+      </div>
+      <div class="rp-date">
+        <div style="font-weight:600;color:#374151">Loan Advisory Report</div>
+        <div>Generated: ${now}</div>
+        <div style="margin-top:2px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:10px;display:inline-block">INDICATIVE ONLY</div>
+      </div>
+    </div>
+    <div class="rp-divider"></div>
+
+    <div class="rp-section">
+      <div class="rp-section-title">Borrower Profile</div>
+      <div class="rp-grid">
+        <div class="rp-kv"><span class="rk">Loan Amount</span><span class="rv">₹${profile.amount.toLocaleString('en-IN')}</span></div>
+        <div class="rp-kv"><span class="rk">Monthly Income</span><span class="rv">₹${profile.income.toLocaleString('en-IN')}</span></div>
+        <div class="rp-kv"><span class="rk">Purpose</span><span class="rv">${profile.purpose}</span></div>
+        <div class="rp-kv"><span class="rk">Employment</span><span class="rv">${profile.employment}</span></div>
+        <div class="rp-kv"><span class="rk">Preferred Tenure</span><span class="rv">${profile.tenure} months</span></div>
+        <div class="rp-kv"><span class="rk">Credit Score</span><span class="rv">${profile.creditScore}</span></div>
+        <div class="rp-kv"><span class="rk">Existing EMIs</span><span class="rv">₹${profile.existingEmi.toLocaleString('en-IN')}/mo</span></div>
+        <div class="rp-kv"><span class="rk">FOIR</span><span class="rv" style="color:${foir<=55?'#15803d':'#dc2626'}">${foir}% ${foir<=55?'✅':'⚠️'}</span></div>
+      </div>
+    </div>
+
+    ${best ? `
+    <div class="rp-section">
+      <div class="rp-section-title">Top Recommendation</div>
+      <div class="rp-highlight">
+        <div class="rh-title">✅ ${best.name}</div>
+        <div class="rh-emi">₹${Math.round(best.emi).toLocaleString('en-IN')}<span style="font-size:14px;font-weight:400;color:#6b7280"> /month</span></div>
+        <div class="rh-sub">@ ${best.minRate}% p.a. for ${profile.tenure} months</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px">
+          <div><span style="color:#6b7280">Total Interest: </span><strong>₹${(Math.round(best.emi)*profile.tenure - profile.amount).toLocaleString('en-IN')}</strong></div>
+          <div><span style="color:#6b7280">Total Repayment: </span><strong>₹${(Math.round(best.emi)*profile.tenure).toLocaleString('en-IN')}</strong></div>
+        </div>
+      </div>
+    </div>` : '<div style="color:#dc2626;padding:8px">No eligible products found for the given profile.</div>'}
+
+    ${eligible.length > 1 ? `
+    <div class="rp-section">
+      <div class="rp-section-title">All Eligible Products</div>
+      ${productsHTML}
+    </div>` : ''}
+
+    <div class="rp-warning">
+      ⚠️ <strong>Disclaimer:</strong> This report is indicative only. Actual loan eligibility, interest rates, and terms are subject to lender's underwriting, credit assessment, and document verification. This does not constitute a loan offer or guarantee of approval.
+    </div>
+    <div class="rp-footer">
+      LoanIQ AI Advisor • Mock Data for Demonstration • Not a licensed financial advisory service
+    </div>`;
+}
+
+function openPdfModal() {
+  document.getElementById('reportPreview').innerHTML = buildReportHTML();
+  document.getElementById('pdfModal').style.display = 'flex';
+}
+
+function closePdfModal() {
+  document.getElementById('pdfModal').style.display = 'none';
+}
+
+function downloadPDF() {
+  const reportHTML = buildReportHTML();
+  const fullHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+    <style>
+      * { box-sizing:border-box; margin:0; padding:0; }
+      body { font-family:'DM Sans',sans-serif; background:#fff; padding:32px; color:#1a1a2e; }
+      .rp-logo{font-family:'DM Serif Display',serif;font-size:22px;color:#0d9488}
+      .rp-logo span{color:#06b6d4}
+      .rp-divider{height:2px;background:linear-gradient(90deg,#4ade80,#22d3ee);border-radius:2px;margin:12px 0}
+      .rp-section{margin-bottom:16px}
+      .rp-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+      .rp-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px}
+      .rp-kv{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+      .rk{color:#6b7280} .rv{font-weight:600;color:#111827}
+      .rp-highlight{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin:10px 0}
+      .rh-title{font-weight:700;color:#15803d;font-size:13px;margin-bottom:6px}
+      .rh-emi{font-family:'DM Serif Display',serif;font-size:26px;color:#15803d}
+      .rh-sub{font-size:11.5px;color:#6b7280;margin-top:2px}
+      .rp-warning{background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;padding:8px 12px;font-size:12px;color:#92400e;margin-top:12px}
+      .rp-footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af}
+      @media print{body{padding:20px}}
+    </style>
+  </head><body>${reportHTML}</body></html>`;
+
+  const blob = new Blob([fullHTML], { type:'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `LoanIQ_Report_${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Show tip
+  addMsg('ai', `📄 <strong>Summary downloaded!</strong> Open the HTML file in your browser and press <strong>Ctrl+P → Save as PDF</strong> to get a clean PDF copy.`);
+  closePdfModal();
+}
+
+// ── Init ─────────────────────────────────────────────────
+window.onload = () => {
+
+  const auth = sessionStorage.getItem('loaniq_auth');
+
+  if (auth) {
+    const parsed = JSON.parse(auth);
+
+    currentUser = parsed.user;
+    authToken = parsed.token;
+
+    document.getElementById('loginScreen').style.display = 'none';
+
+    loadUserSession();
+  }
+
+  addMsg('ai', `Hello! I'm <strong>LoanIQ</strong>, your AI-powered loan advisor. 👋<br/><br/>
+I can help you:<br/>
+<ul>
+  <li>Find the right loan product for your needs</li>
+  <li>Calculate EMI, interest, and total repayment</li>
+  <li>Understand eligibility and risk factors</li>
+  <li>Compare tenure options and trade-offs</li>
+  <li>🎤 <strong>Voice input</strong> supported — click the mic button</li>
+  <li>📄 <strong>Download</strong> your loan summary report anytime</li>
+</ul>
+<strong>Fill in your borrower profile</strong> on the left and click <strong>Get AI Recommendations</strong>, or just ask me anything!<br/><br/>
+<div class="disclaimer">⚠️ This is an advisory tool only. All loan approvals are subject to underwriting and document verification.</div>`);
+};
+</script>
+</body>
+</html>
